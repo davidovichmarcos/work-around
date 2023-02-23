@@ -1,0 +1,20 @@
+{
+  "name": "work-around",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node ./src/server.mjs",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2"
+  },
+  "dependencies": {
+    "firebase": "^9.17.1"
+  }
+}
