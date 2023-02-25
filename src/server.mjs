@@ -1,38 +1,44 @@
-import express from'express'
-import bodyParser from 'body-parser';
-import cors from'cors';
-import { initializeApp } from "firebase/app";
-import { getDatabase, ref, set } from "firebase/database";
+import exec from'exec';
+import fetch from 'node-fetch';
 
-const firebaseConfig = {
-  databaseURL: "https://work-around-f1f10-default-rtdb.firebaseio.com",
-};
+function readSensor(callback) {
+	exec('./HTU21D_test', {cwd: '/home/pi/Documents/Projects/rpi-examples/HTU21D/c'}, (error, stdout, stderr) => {
+		if (error) {
+			console.error(`exec error: ${error}`);
+			return -1;
+		}
+		callback(stdout);
+	});
+}
 
-const app = express();
-// Initialize Firebase
-const fb = initializeApp(firebaseConfig);
-const port = 3000;
-// Initialize Realtime Database and get a reference to the service
-const db = getDatabase(fb);
-
-app.use(cors());
-
-app.use(bodyParser.urlencoded({ extended: false }));
-app.use(bodyParser.json());
-
-app.post('/sensordata', (req, res) => {
-  const sensordata = req.body;
-  const { temperature, humidity, timestamp} = sensordata;
-  function writeSensorData(temperature, humidity, timestamp) {
-    set(ref(db, 'sensordata/' + timestamp), {
-      temperature: temperature,
-      humidity: humidity,
-      timestamp : timestamp
-    });
-  }
-  writeSensorData(temperature, humidity, timestamp)
-  res.send(`data sent at: ${sensordata.timestamp}`);
-});
+function writeSensorData(temperature, humidity, timestamp) {
+	const sensorDataRef = ref(db, 'sensordata');
+	const newSensorDataRef = push(sensorDataRef);
+	set(newSensorDataRef, {
+		temperature: temperature,
+		humidity: humidity,
+		timestamp: timestamp
+	});
+}
 
 
-app.listen(port, () => console.log(`Hello world app listening on port ${port}!`));
+function transformData(data, callback) {
+	const rawData = data.split('\n');
+	const temperature = rawData[0];
+	const humidity = rawData[1];
+	callback({ temperature, humidity });
+}
+
+setInterval( () => {
+	readSensor( data => {
+		transformData(data, data => {
+			
+			let {temperature, humidity } = data;
+			temperature = Number(temperature.split('C')[0]);
+			humidity = Number(humidity.split('%')[0]);
+			console.log(data)
+			fetch('https://notgamp.marplacode.com/api/v1/enviroment/sensors',{ method: 'POST', body: JSON.stringify({humidity: humidity, temperature: temperature}), headers: {Authorization: 'Bearer 235b13c6-0e6e-4347-9961-7d42e97b42b4', 'Content-Type': 'application/json'}});	
+		});
+		
+	});
+},3000);// (send the data to the ui) = 1s
